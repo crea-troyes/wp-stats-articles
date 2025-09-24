@@ -3,8 +3,23 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Stats_Tracker {
     protected static $bot_patterns = [
-        'bot','crawl','spider','slurp','facebookexternalhit','mediapartners-google',
-        'bingpreview','bingbot','yandex','curl','wget','python-requests','httpclient'
+        // moteurs de recherche classiques
+        'googlebot', 'bingbot', 'slurp', 'yahoo', 'yandex', 'duckduckbot', 
+        'baiduspider', 'sogou', 'exabot', 'facebot', 'facebookexternalhit', 
+        'mediapartners-google', 'bingpreview', 'seznambot',
+    
+        // bots SEO et analyse
+        'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'majestic12', 'rogerbot', 
+        'blekkobot', 'sitebot', 'crawler', 'spider', 'robot',
+    
+        // scrapers et outils divers
+        'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client',
+    
+        // réseaux sociaux
+        'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot',
+    
+        // autres bots fréquents
+        'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot'
     ];
 
     public static function init() {
