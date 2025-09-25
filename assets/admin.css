@@ -84,6 +84,13 @@
     color: #0073aa;
 }
 
+.active-list table td small {
+    font-size: 10px;
+    color: #777 !important;
+    display: block;
+    line-height: 1em !important;
+}
+
 .widefat {
     width: 100%;
     border-collapse: collapse;
