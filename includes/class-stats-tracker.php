@@ -3,25 +3,28 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Stats_Tracker {
     protected static $bot_patterns = [
-        // moteurs de recherche classiques
         'googlebot', 'bingbot', 'slurp', 'yahoo', 'yandex', 'duckduckbot', 
         'baiduspider', 'sogou', 'exabot', 'facebot', 'facebookexternalhit', 
-        'mediapartners-google', 'bingpreview', 'seznambot',
-
+        'mediapartners-google', 'bingpreview', 'seznambot', 'qwantify', 'nutch', 'archive.org_bot', 'yeti', 'ahoy',
+    
         // bots SEO et analyse
         'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'majestic12', 'rogerbot', 
-        'blekkobot', 'sitebot', 'crawler', 'spider', 'robot',
-
+        'blekkobot', 'sitebot', 'crawler', 'spider', 'robot', 'surveybot', 'heritrix', 'dataprovider', 'linkdexbot',
+    
         // scrapers et outils divers
         'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client',
-
+        'okhttp', 'httpx', 'axios', 'fetch', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler',
+    
         // réseaux sociaux
-        'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot',
-
-        // autres bots fréquents
+        'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot', 'line-pizza', 'whatsapp', 'tumblr', 'redditbot',
+    
+        // assistants IA et chatbots
         'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot', 'perplexitybot', 'openai', 'chatgpt', 'gptbot', 'chatgpt-user',
-        'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot'
-
+        'anthropic', 'bard', 'huggingface', 'bingpreview', 'youdao', 'deepmind', 'openai', 'stabilityai',
+    
+        // autres bots fréquents
+        'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot', 'yisou', 'wotbox', 'livelapbot', 'adsbot-google', 'linkedinbot',
+        'semantabot', 'uptimerobot', 'pingdom', 'site24x7', 'uptimerobot', 'monitoring', 'statuscake', 'downtimebot'
     ];
 
     public static function init() {
