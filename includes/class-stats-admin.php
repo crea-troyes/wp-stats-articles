@@ -231,7 +231,6 @@ class Stats_Admin {
                 </div>
             <?php endif; ?>
 
-            <p id="start">Depuis le Mercredi 24 Septembre 2025</p>
             <div class="stats-overview">
 
                 <div class="stat-card">
