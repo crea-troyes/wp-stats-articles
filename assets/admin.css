@@ -13,6 +13,12 @@
     color: #0073aa;
 }
 
+.stats-visites-wrap #start {
+    margin: -20px 0 20px;
+    font-size: 12px;
+    color: #999;
+}
+
 .stats-overview {
     display: flex;
     flex-wrap: wrap;
@@ -68,6 +74,9 @@
     font-size: 14px;
     cursor: pointer;
     transition: border-color 0.2s;
+    width: 100%;
+    position: relative;
+    top: 4px;
 }
 
 .stats-filter-form select:hover {
@@ -144,6 +153,10 @@
     color: #fff;
     border-color: #0073aa;
     pointer-events: none;
+}
+
+.tools-section hr {
+    margin-top: 50px;
 }
 
 @media (max-width: 768px) {
