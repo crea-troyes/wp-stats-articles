@@ -42,8 +42,7 @@ class Stats_Tracker {
         $ip = self::get_remote_addr();
         if ( ! $ip ) return '';
         // hash to avoid storing raw IP
-        // return hash( 'sha256', $ip );
-        return $ip;
+        return hash( 'sha256', $ip );
     }
 
     protected static function get_remote_addr() {
