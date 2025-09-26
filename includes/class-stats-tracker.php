@@ -1,261 +1,162 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-class Stats_Admin {
+class Stats_Tracker {
+    protected static $bot_patterns = [
+        // moteurs de recherche classiques
+        'googlebot', 'bingbot', 'slurp', 'yahoo', 'yandex', 'duckduckbot', 
+        'baiduspider', 'sogou', 'exabot', 'facebot', 'facebookexternalhit', 
+        'mediapartners-google', 'bingpreview', 'seznambot',
+
+        // bots SEO et analyse
+        'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'majestic12', 'rogerbot', 
+        'blekkobot', 'sitebot', 'crawler', 'spider', 'robot',
+
+        // scrapers et outils divers
+        'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client',
+
+        // réseaux sociaux
+        'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot',
+
+        // autres bots fréquents
+        'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot', 'perplexitybot', 'openai', 'chatgpt', 'gptbot', 'chatgpt-user',
+        'amazonbot', 'petalbot'
+
+    ];
+
     public static function init() {
-        add_action( 'admin_menu', [ __CLASS__, 'add_menu' ] );
-        add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue' ] );
+        add_action( 'template_redirect', [ __CLASS__, 'maybe_track' ], 0 );
+        add_action( 'init', [ __CLASS__, 'maybe_update_session' ], 0 );
     }
 
-    public static function add_menu() {
-        // top-level menu "Statistiques"
-        add_menu_page(
-            __( 'Statistiques', 'stats-visites' ),
-            __( 'Statistiques', 'stats-visites' ),
-            'manage_options',
-            'stats-visites',
-            [ __CLASS__, 'page_stats' ],
-            'dashicons-chart-area',
-            3
-        );
-    }
-
-    public static function enqueue( $hook ) {
-        if ( strpos( $hook, 'stats-visites' ) === false ) return;
-        wp_enqueue_style( 'stats-visites-admin', STATS_VISITES_URL . 'assets/admin.css', [], '1.0' );
-    }
-
-    protected static function sanitize_range( $r ) {
-        $allowed = [ 'all', '30', '7', '1' ];
-        return in_array( $r, $allowed, true ) ? $r : 'all';
-    }
-
-    private function is_post_article($url) {
-    // Reconstituer l'URL complète
-    $full_url = home_url($url);
-
-    // Récupérer l'ID WordPress de la ressource
-    $post_id = url_to_postid($full_url);
-
-    if ($post_id) {
-        // Vérifier que c'est bien un article
-        $post_type = get_post_type($post_id);
-        return $post_type === 'post';
-    }
-
-    
-
-    return false;
-}
-
-    private static function parseUserAgent($ua) {
-        $browser = 'Inconnu';
-        $version = '';
-        $os = 'Inconnu';
-        $arch = '';
-
-        // Détecter le navigateur et sa version
-        if (preg_match('/Firefox\/([0-9\.]+)/i', $ua, $matches)) {
-            $browser = 'Firefox';
-            $version = $matches[1];
-        } elseif (preg_match('/Chrome\/([0-9\.]+)/i', $ua, $matches)) {
-            $browser = 'Chrome';
-            $version = $matches[1];
-        } elseif (preg_match('/Edg\/([0-9\.]+)/i', $ua, $matches)) {
-            $browser = 'Edge';
-            $version = $matches[1];
-        } elseif (preg_match('/Safari\/([0-9\.]+)/i', $ua, $matches) && !preg_match('/Chrome/i', $ua)) {
-            $browser = 'Safari';
-            if (preg_match('/Version\/([0-9\.]+)/i', $ua, $m)) {
-                $version = $m[1];
-            }
+    protected static function is_bot( $ua ) {
+        if ( empty( $ua ) ) return true;
+        $ua = strtolower( $ua );
+        foreach ( self::$bot_patterns as $p ) {
+            if ( strpos( $ua, $p ) !== false ) return true;
         }
-
-        // Détecter OS et architecture
-        if (preg_match('/Windows NT/i', $ua)) {
-            $os = 'Windows';
-            if (preg_match('/WOW64|Win64|x64/i', $ua)) $arch = '64 bits';
-            else $arch = '32 bits';
-        } elseif (preg_match('/Linux/i', $ua)) {
-            $os = 'Linux';
-            if (preg_match('/x86_64|amd64/i', $ua)) $arch = '64 bits';
-            else $arch = '32 bits';
-        } elseif (preg_match('/Mac OS X/i', $ua)) {
-            $os = 'Mac OS X';
-            if (preg_match('/x86_64|arm64/i', $ua)) $arch = '64 bits';
-            else $arch = '32 bits';
-        }
-
-        return "$browser, $version, $os, $arch";
+        return false;
     }
 
-    public static function page_stats() {
-        if ( ! current_user_can( 'manage_options' ) ) {
+    protected static function ip_hash() {
+        $ip = self::get_remote_addr();
+        if ( ! $ip ) return '';
+        // hash to avoid storing raw IP
+        // return hash( 'sha256', $ip );
+        return $ip;
+    }
+
+    protected static function get_remote_addr() {
+        if ( ! empty( $_SERVER['HTTP_CLIENT_IP'] ) ) {
+            return sanitize_text_field( wp_unslash( $_SERVER['HTTP_CLIENT_IP'] ) );
+        }
+        if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+            $arr = explode( ',', wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+            return sanitize_text_field( trim( $arr[0] ) );
+        }
+        if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+            return sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+        }
+        return '';
+    }
+
+    public static function maybe_track() {
+        if ( is_admin() ) return;
+        // Only track single posts (articles)
+        if ( ! is_singular( 'post' ) ) {
+            // still update session for active visitors on non-post pages
             return;
         }
 
-        global $wpdb;
-        $prefix = $wpdb->prefix;
-
-        // params
-        $range = isset( $_GET['range'] ) ? sanitize_text_field( wp_unslash( $_GET['range'] ) ) : 'all';
-        $range = self::sanitize_range( $range );
-        $paged = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
-        $per_page = 50;
-        $offset = ( $paged - 1 ) * $per_page;
-
-        // active visitors: last_activity within 5 minutes
-        $active_window = date( 'Y-m-d H:i:s', strtotime( '-5 minutes', current_time( 'timestamp' ) ) );
-        $active_count = (int) $wpdb->get_var(
-            $wpdb->prepare( "SELECT COUNT(*) FROM {$prefix}stats_sessions WHERE last_activity >= %s", $active_window )
-        );
-        $active_rows = $wpdb->get_results(
-            $wpdb->prepare( "SELECT page, post_id, last_activity, user_agent FROM {$prefix}stats_sessions WHERE last_activity >= %s ORDER BY last_activity DESC LIMIT 200", $active_window )
-        );
-
-        // total views all time
-        $total_views_all_time = (int) $wpdb->get_var( "SELECT SUM(view_count) FROM {$prefix}stats_post_totals" );
-
-        // build posts stats depending on range
-        if ( $range === 'all' ) {
-            // use totals table (fast)
-            $sql_total = "SELECT t.post_id, t.view_count, p.post_title
-                FROM {$prefix}stats_post_totals t
-                LEFT JOIN {$wpdb->posts} p ON p.ID = t.post_id
-                WHERE p.post_type = 'post'
-                ORDER BY t.view_count DESC
-                LIMIT %d OFFSET %d";
-            $rows = $wpdb->get_results( $wpdb->prepare( $sql_total, $per_page, $offset ) );
-            $total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$prefix}stats_post_totals" );
-        } else {
-            // range in days: '30','7','1' (1 = yesterday)
-            if ( $range === '1' ) {
-                // yesterday full day
-                $start = date( 'Y-m-d 00:00:00', strtotime( '-1 day', current_time( 'timestamp' ) ) );
-                $end = date( 'Y-m-d 23:59:59', strtotime( '-1 day', current_time( 'timestamp' ) ) );
-                $where = $wpdb->prepare( "WHERE sv.viewed_at BETWEEN %s AND %s", $start, $end );
-            } else {
-                $days = intval( $range );
-                $start = date( 'Y-m-d H:i:s', strtotime( "-{$days} days", current_time( 'timestamp' ) ) );
-                $where = $wpdb->prepare( "WHERE sv.viewed_at >= %s", $start );
-            }
-
-            $sql = "SELECT sv.post_id, COUNT(*) AS views, p.post_title
-                FROM {$prefix}stats_post_views sv
-                LEFT JOIN {$wpdb->posts} p ON p.ID = sv.post_id
-                {$where}
-                AND p.post_type = 'post'
-                GROUP BY sv.post_id
-                ORDER BY views DESC
-                LIMIT %d OFFSET %d";
-            $rows = $wpdb->get_results( $wpdb->prepare( $sql, $per_page, $offset ) );
-
-            // total items for pagination
-            $sql_count = "SELECT COUNT(DISTINCT sv.post_id) FROM {$prefix}stats_post_views sv
-                LEFT JOIN {$wpdb->posts} p ON p.ID = sv.post_id
-                {$where}
-                AND p.post_type = 'post'";
-            $total_items = (int) $wpdb->get_var( $sql_count );
+        // Exclude admin users
+        if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+            return;
         }
 
-        // pagination math
-        $total_pages = (int) ceil( $total_items / $per_page );
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
+        if ( self::is_bot( $ua ) ) return;
 
-        // render (minimal)
-        ?>
-        <div class="wrap stats-visites-wrap">
-            <h1><?php esc_html_e( 'Statistiques', 'stats-visites' ); ?></h1>
-            <p>Depuis le Mercredi 24 Septembre 2025</p>
-            <div class="stats-overview">
+        $post_id = get_queried_object_id();
+        if ( ! $post_id ) return;
 
-                <div class="stat-card">
-                    <h2><?php echo intval( $total_views_all_time ); ?></h2>
-                    <p><?php esc_html_e( 'Total vues', 'stats-visites' ); ?></p>
-                </div>
+        global $wpdb;
+        $prefix = $wpdb->prefix;
+        $ip_hash = self::ip_hash();
+        $now = current_time( 'mysql', 0 );
 
-                <div class="stat-card">
-                    <h2><?php echo intval( $active_count ); ?></h2>
-                    <p><?php esc_html_e( 'Visiteurs actifs (5 min)', 'stats-visites' ); ?></p>
-                </div>
+        // insert into history
+        $wpdb->insert(
+            $prefix . 'stats_post_views',
+            [
+                'post_id' => $post_id,
+                'viewed_at' => $now,
+                'ip_hash' => $ip_hash,
+                'user_agent' => substr( $ua, 0, 65535 ),
+            ],
+            [ '%d', '%s', '%s', '%s' ]
+        );
 
-                <div class="stat-card">
-                    <form method="get" class="stats-filter-form">
-                        <input type="hidden" name="page" value="stats-visites">
-                        <label for="range"><?php esc_html_e( 'Période', 'stats-visites' ); ?></label>
-                        <select id="range" name="range" onchange="this.form.submit()">
-                            <option value="all" <?php selected( $range, 'all' ); ?>><?php esc_html_e( 'Depuis toujours', 'stats-visites' ); ?></option>
-                            <option value="30" <?php selected( $range, '30' ); ?>><?php esc_html_e( '30 derniers jours', 'stats-visites' ); ?></option>
-                            <option value="7" <?php selected( $range, '7' ); ?>><?php esc_html_e( '7 derniers jours', 'stats-visites' ); ?></option>
-                            <option value="1" <?php selected( $range, '1' ); ?>><?php esc_html_e( 'Hier', 'stats-visites' ); ?></option>
-                        </select>
-                    </form>
-                </div>
-            </div>
+        // increment totals (INSERT ... ON DUPLICATE KEY UPDATE)
+        $table_tot = $prefix . 'stats_post_totals';
+        $wpdb->query(
+            $wpdb->prepare(
+                "INSERT INTO {$table_tot} (post_id, view_count) VALUES (%d, 1)
+                ON DUPLICATE KEY UPDATE view_count = view_count + 1",
+                $post_id
+            )
+        );
+    }
 
-            <div class="active-list">
-                <h2><?php esc_html_e( 'Visiteurs actifs', 'stats-visites' ); ?></h2>
-                <table class="widefat">
-                    <thead><tr><th><?php esc_html_e( 'Page', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Post_ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Dernière activité', 'stats-visites' ); ?></th><th><?php esc_html_e( 'User Agent', 'stats-visites' ); ?></th></tr></thead>
-                    <tbody>
-                        <?php if ( $active_rows ): ?>
-                            <?php foreach ( $active_rows as $r ): ?>
-                                <?php
-                                $post_id = $r->post_id;
+    public static function maybe_update_session() {
+        // Update sessions for active visitors for any front-end request (not admin)
+        if ( is_admin() ) return;
 
-                                // Si l'ID est vide, on tente de le déduire de l'URL
-                                if ( ! $post_id ) {
-                                    $post_id = url_to_postid( home_url( $r->page ) );
-                                }
+        // Exclude admin users
+        if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+            return;
+        }
 
-                                // Vérifier si c'est bien un article
-                                if ( $post_id && get_post_type( $post_id ) === 'post' ):
-                                ?>
-                                    <tr>
-                                        <td><?php echo esc_html( $r->page ); ?></td>
-                                        <td><?php echo esc_html( $post_id ); ?></td>
-                                        <td><?php echo esc_html( (new DateTime($r->last_activity))->format('H:i:s d/m/Y') ); ?></td>
-                                        <td><?php echo esc_html( self::parseUserAgent( $r->user_agent ) ); ?><br><small><?php echo esc_html( $r->user_agent ); ?></small></td>
-                                    </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="3"><?php esc_html_e( 'Aucun visiteur actif', 'stats-visites' ); ?></td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
+        if ( self::is_bot( $ua ) ) return;
 
-            <div class="posts-list">
-                <h2><?php esc_html_e( 'Articles - classement', 'stats-visites' ); ?></h2>
-                <table class="widefat">
-                    <thead><tr><th><?php esc_html_e( 'Titre', 'stats-visites' ); ?></th><th><?php esc_html_e( 'ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Vues', 'stats-visites' ); ?></th></tr></thead>
-                    <tbody>
-                        <?php if ( $rows ): foreach ( $rows as $row ): ?>
-                            <tr>
-                                <td><?php echo esc_html( $row->post_title ?: '(no title)' ); ?></td>
-                                <td><?php echo esc_html( $row->post_id ); ?></td>
-                                <td><?php echo esc_html( isset( $row->view_count ) ? $row->view_count : ( isset( $row->views ) ? $row->views : 0 ) ); ?></td>
-                            </tr>
-                        <?php endforeach; else: ?>
-                            <tr><td colspan="3"><?php esc_html_e( 'Aucun résultat', 'stats-visites' ); ?></td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+        global $wpdb;
+        $prefix = $wpdb->prefix;
+        $ip_hash = self::ip_hash();
+        if ( empty( $ip_hash ) ) return;
 
-                <div class="pagination">
-                    <?php
-                    $base_url = esc_url_raw( add_query_arg( array( 'page' => 'stats-visites', 'range' => $range ), admin_url( 'admin.php' ) ) );
-                    for ( $i = 1; $i <= max(1,$total_pages); $i++ ) {
-                        $url = add_query_arg( 'paged', $i, $base_url );
-                        $class = ( $i === $paged ) ? 'page-number current' : 'page-number';
-                        echo '<a class="'.esc_attr($class).'" href="'.esc_url($url).'">'.intval($i).'</a> ';
-                    }
-                    ?>
-                </div>
-            </div>
-        </div>
-        <?php
+        $now = current_time( 'mysql', 0 );
+        $page = esc_url_raw( ( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/' ) );
+        $post_id = ( is_singular( 'post' ) ? get_queried_object_id() : null );
+
+        // try update existing
+        $updated = $wpdb->update(
+            $prefix . 'stats_sessions',
+            [
+                'last_activity' => $now,
+                'page' => substr( $page, 0, 190 ),
+                'post_id' => $post_id,
+                'user_agent' => substr( $ua, 0, 65535 ),
+            ],
+            [ 'ip_hash' => $ip_hash ],
+            [ '%s', '%s', '%d', '%s' ],
+            [ '%s' ]
+        );
+
+        if ( $updated === false ) return;
+
+        if ( $updated === 0 ) {
+            // insert new
+            $wpdb->insert(
+                $prefix . 'stats_sessions',
+                [
+                    'ip_hash' => $ip_hash,
+                    'last_activity' => $now,
+                    'page' => substr( $page, 0, 190 ),
+                    'post_id' => $post_id,
+                    'user_agent' => substr( $ua, 0, 65535 ),
+                ],
+                [ '%s', '%s', '%s', '%d', '%s' ]
+            );
+        }
     }
 }
