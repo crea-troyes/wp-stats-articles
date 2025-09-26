@@ -13,12 +13,6 @@
     color: #0073aa;
 }
 
-.stats-visites-wrap #start {
-    margin: -20px 0 20px;
-    font-size: 12px;
-    color: #999;
-}
-
 .stats-overview {
     display: flex;
     flex-wrap: wrap;
