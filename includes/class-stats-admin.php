@@ -26,7 +26,7 @@ class Stats_Admin {
     }
 
     protected static function sanitize_range( $r ) {
-        $allowed = [ 'all', '30', '7', '1' ];
+        $allowed = [ 'all', 'today', '30', '7', '1' ];
         return in_array( $r, $allowed, true ) ? $r : 'all';
     }
 
@@ -43,12 +43,93 @@ class Stats_Admin {
         return $post_type === 'post';
     }
 
+    
+
     return false;
 }
+
+    private static function parseUserAgent($ua) {
+        $browser = 'Inconnu';
+        $version = '';
+        $os = 'Inconnu';
+        $arch = '';
+
+        // Détecter le navigateur et sa version
+        if (preg_match('/Firefox\/([0-9\.]+)/i', $ua, $matches)) {
+            $browser = 'Firefox';
+            $version = $matches[1];
+        } elseif (preg_match('/Chrome\/([0-9\.]+)/i', $ua, $matches)) {
+            $browser = 'Chrome';
+            $version = $matches[1];
+        } elseif (preg_match('/Edg\/([0-9\.]+)/i', $ua, $matches)) {
+            $browser = 'Edge';
+            $version = $matches[1];
+        } elseif (preg_match('/Safari\/([0-9\.]+)/i', $ua, $matches) && !preg_match('/Chrome/i', $ua)) {
+            $browser = 'Safari';
+            if (preg_match('/Version\/([0-9\.]+)/i', $ua, $m)) {
+                $version = $m[1];
+            }
+        }
+
+        // Détecter OS et architecture
+        if (preg_match('/Windows NT/i', $ua)) {
+            $os = 'Windows';
+            if (preg_match('/WOW64|Win64|x64/i', $ua)) $arch = '64 bits';
+            else $arch = '32 bits';
+        } elseif (preg_match('/Linux/i', $ua)) {
+            $os = 'Linux';
+            if (preg_match('/x86_64|amd64/i', $ua)) $arch = '64 bits';
+            else $arch = '32 bits';
+        } elseif (preg_match('/Mac OS X/i', $ua)) {
+            $os = 'Mac OS X';
+            if (preg_match('/x86_64|arm64/i', $ua)) $arch = '64 bits';
+            else $arch = '32 bits';
+        }
+
+        return "$browser, $version, $os, $arch";
+    }
 
     public static function page_stats() {
         if ( ! current_user_can( 'manage_options' ) ) {
             return;
+        }
+
+        // --- Handle Reset Action ---
+        if ( isset( $_GET['action'] ) && $_GET['action'] === 'reset_stats' && isset( $_GET['_wpnonce'] ) ) {
+            if ( ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce'] ), 'stats_reset_nonce' ) ) {
+                wp_die( 'La vérification de sécurité a échoué.' );
+            }
+
+            global $wpdb;
+            $prefix = $wpdb->prefix;
+
+            $tables_to_truncate = [
+                $prefix . 'stats_post_views',
+                $prefix . 'stats_post_totals',
+                $prefix . 'stats_sessions',
+            ];
+
+            foreach ( $tables_to_truncate as $table ) {
+                $wpdb->query( "TRUNCATE TABLE {$table}" );
+            }
+
+            wp_safe_redirect( admin_url( 'admin.php?page=stats-visites&stats_message=reset_success' ) );
+            exit;
+        }
+
+        // --- Handle Clear Sessions Action ---
+        if ( isset( $_GET['action'] ) && $_GET['action'] === 'clear_sessions' && isset( $_GET['_wpnonce_sessions'] ) ) {
+            if ( ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce_sessions'] ), 'stats_clear_sessions_nonce' ) ) {
+                wp_die( 'La vérification de sécurité a échoué.' );
+            }
+
+            global $wpdb;
+            $prefix = $wpdb->prefix;
+
+            $wpdb->query( "TRUNCATE TABLE {$prefix}stats_sessions" );
+
+            wp_safe_redirect( admin_url( 'admin.php?page=stats-visites&stats_message=clear_sessions_success' ) );
+            exit;
         }
 
         global $wpdb;
@@ -67,8 +148,24 @@ class Stats_Admin {
             $wpdb->prepare( "SELECT COUNT(*) FROM {$prefix}stats_sessions WHERE last_activity >= %s", $active_window )
         );
         $active_rows = $wpdb->get_results(
-            $wpdb->prepare( "SELECT page, post_id, last_activity FROM {$prefix}stats_sessions WHERE last_activity >= %s ORDER BY last_activity DESC LIMIT 200", $active_window )
+            $wpdb->prepare( "SELECT page, ip_hash, post_id, last_activity, user_agent FROM {$prefix}stats_sessions WHERE last_activity >= %s ORDER BY last_activity DESC LIMIT 200", $active_window )
         );
+        $active_visitors = 0;
+        foreach ( $active_rows as $r ) {
+            $post_id = $r->post_id;
+            if ( ! $post_id ) {
+                $post_id = url_to_postid( home_url( $r->page ) );
+            }
+            if ( $post_id && get_post_type( $post_id ) === 'post' ) {
+                $active_visitors++;
+            }
+        }
+
+        // Get total sessions count for the new button
+        $total_sessions = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$prefix}stats_sessions" );
+
+        // total views all time
+        $total_views_all_time = (int) $wpdb->get_var( "SELECT SUM(view_count) FROM {$prefix}stats_post_totals" );
 
         // build posts stats depending on range
         if ( $range === 'all' ) {
@@ -83,12 +180,16 @@ class Stats_Admin {
             $total_items = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$prefix}stats_post_totals" );
         } else {
             // range in days: '30','7','1' (1 = yesterday)
-            if ( $range === '1' ) {
+            if ( $range === 'today' ) {
+                // today
+                $start = date( 'Y-m-d 00:00:00', current_time( 'timestamp' ) );
+                $where = $wpdb->prepare( "WHERE sv.viewed_at >= %s", $start );
+            } elseif ( $range === '1' ) {
                 // yesterday full day
                 $start = date( 'Y-m-d 00:00:00', strtotime( '-1 day', current_time( 'timestamp' ) ) );
                 $end = date( 'Y-m-d 23:59:59', strtotime( '-1 day', current_time( 'timestamp' ) ) );
                 $where = $wpdb->prepare( "WHERE sv.viewed_at BETWEEN %s AND %s", $start, $end );
-            } else {
+            } else { // '30', '7'
                 $days = intval( $range );
                 $start = date( 'Y-m-d H:i:s', strtotime( "-{$days} days", current_time( 'timestamp' ) ) );
                 $where = $wpdb->prepare( "WHERE sv.viewed_at >= %s", $start );
@@ -120,30 +221,52 @@ class Stats_Admin {
         <div class="wrap stats-visites-wrap">
             <h1><?php esc_html_e( 'Statistiques', 'stats-visites' ); ?></h1>
 
+            <?php if ( isset( $_GET['stats_message'] ) && $_GET['stats_message'] === 'reset_success' ): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php esc_html_e( 'Toutes les données de statistiques ont été remises à zéro.', 'stats-visites' ); ?></p>
+                </div>
+            <?php elseif ( isset( $_GET['stats_message'] ) && $_GET['stats_message'] === 'clear_sessions_success' ): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php esc_html_e( 'La table des sessions a été vidée avec succès.', 'stats-visites' ); ?></p>
+                </div>
+            <?php endif; ?>
+
+            <p id="start">Depuis le Mercredi 24 Septembre 2025</p>
             <div class="stats-overview">
+
                 <div class="stat-card">
-                    <h2><?php echo intval( $active_count ); ?></h2>
+                    <h2><?php echo intval( $total_views_all_time ); ?></h2>
+                    <p><?php esc_html_e( 'Total vues', 'stats-visites' ); ?></p>
+                </div>
+
+                <div class="stat-card">
+                    <h2><?php echo (intval( $active_count ) - $active_visitors); ?></h2>
+                    <p><?php esc_html_e( 'Bots actifs (5 min)', 'stats-visites' ); ?></p>
+                </div>
+
+                <div class="stat-card">
+                    <h2><?php echo $active_visitors; ?></h2>
                     <p><?php esc_html_e( 'Visiteurs actifs (5 min)', 'stats-visites' ); ?></p>
                 </div>
 
                 <div class="stat-card">
                     <form method="get" class="stats-filter-form">
                         <input type="hidden" name="page" value="stats-visites">
-                        <label for="range"><?php esc_html_e( 'Période', 'stats-visites' ); ?></label>
                         <select id="range" name="range" onchange="this.form.submit()">
                             <option value="all" <?php selected( $range, 'all' ); ?>><?php esc_html_e( 'Depuis toujours', 'stats-visites' ); ?></option>
                             <option value="30" <?php selected( $range, '30' ); ?>><?php esc_html_e( '30 derniers jours', 'stats-visites' ); ?></option>
                             <option value="7" <?php selected( $range, '7' ); ?>><?php esc_html_e( '7 derniers jours', 'stats-visites' ); ?></option>
                             <option value="1" <?php selected( $range, '1' ); ?>><?php esc_html_e( 'Hier', 'stats-visites' ); ?></option>
+                            <option value="today" <?php selected( $range, 'today' ); ?>><?php esc_html_e( 'Aujourd\'hui', 'stats-visites' ); ?></option>
                         </select>
                     </form>
                 </div>
             </div>
 
             <div class="active-list">
-                <h2><?php esc_html_e( 'Visiteurs actifs (aperçu)', 'stats-visites' ); ?></h2>
+                <h2><?php esc_html_e( 'Visiteurs actifs', 'stats-visites' ); ?></h2>
                 <table class="widefat">
-                    <thead><tr><th><?php esc_html_e( 'Page', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Post ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Dernière activité', 'stats-visites' ); ?></th></tr></thead>
+                    <thead><tr><th><?php esc_html_e( 'Page', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Post_ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Dernière_activité', 'stats-visites' ); ?></th><th><?php esc_html_e( 'IP', 'stats-visites' ); ?></th><th><?php esc_html_e( 'User Agent', 'stats-visites' ); ?></th></tr></thead>
                     <tbody>
                         <?php if ( $active_rows ): ?>
                             <?php foreach ( $active_rows as $r ): ?>
@@ -161,7 +284,9 @@ class Stats_Admin {
                                     <tr>
                                         <td><?php echo esc_html( $r->page ); ?></td>
                                         <td><?php echo esc_html( $post_id ); ?></td>
-                                        <td><?php echo esc_html( (new DateTime($r->last_activity))->format('H:i:s d/m/Y') ); ?></td>
+                                        <td><?php echo esc_html( (new DateTime($r->last_activity))->format('H:i:s') ); ?><br><small><?php echo esc_html( (new DateTime($r->last_activity))->format('d/m/Y') ); ?></small></td>
+                                        <td><?php echo esc_html( $r->ip_hash ); ?></td>
+                                        <td><?php echo esc_html( self::parseUserAgent( $r->user_agent ) ); ?><br><small><?php echo esc_html( $r->user_agent ); ?></small></td>
                                     </tr>
                                 <?php endif; ?>
                             <?php endforeach; ?>
@@ -175,7 +300,7 @@ class Stats_Admin {
             </div>
 
             <div class="posts-list">
-                <h2><?php esc_html_e( 'Articles - classement', 'stats-visites' ); ?></h2>
+                <h2><?php esc_html_e( 'Classement des articles', 'stats-visites' ); ?></h2>
                 <table class="widefat">
                     <thead><tr><th><?php esc_html_e( 'Titre', 'stats-visites' ); ?></th><th><?php esc_html_e( 'ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Vues', 'stats-visites' ); ?></th></tr></thead>
                     <tbody>
@@ -200,6 +325,33 @@ class Stats_Admin {
                         echo '<a class="'.esc_attr($class).'" href="'.esc_url($url).'">'.intval($i).'</a> ';
                     }
                     ?>
+                </div>
+
+                <div class="tools-section" style="margin-top: 40px;">
+                    <hr>
+                    <h2><?php esc_html_e( 'Outils de maintenance', 'stats-visites' ); ?></h2>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div class="stat-card">
+                            <p><?php esc_html_e( 'Effacer toutes les données de statistiques. Cette action est irréversible.', 'stats-visites' ); ?></p>
+                            <form method="GET" style="margin-top: 10px;">
+                                <input type="hidden" name="page" value="stats-visites">
+                                <input type="hidden" name="action" value="reset_stats">
+                                <?php wp_nonce_field( 'stats_reset_nonce' ); ?>
+                                <input type="submit" class="button button-secondary" style="color: #d63638; border-color: #d63638;" value="<?php esc_attr_e( 'Remettre à zéro', 'stats-visites' ); ?>"
+                                    onclick="return confirm('<?php esc_attr_e( 'Êtes-vous sûr de vouloir effacer TOUTES les statistiques ? Cette action est irréversible.', 'stats-visites' ); ?>');">
+                            </form>
+                        </div>
+                        <div class="stat-card">
+                            <p><?php esc_html_e( 'Vider la table des sessions de visiteurs. Utile pour la maintenance.', 'stats-visites' ); ?></p>
+                            <form method="GET" style="margin-top: 10px;">
+                                <input type="hidden" name="page" value="stats-visites">
+                                <input type="hidden" name="action" value="clear_sessions">
+                                <?php wp_nonce_field( 'stats_clear_sessions_nonce', '_wpnonce_sessions' ); ?>
+                                <input type="submit" class="button button-secondary" value="<?php printf( esc_attr__( 'Vider les sessions (%s entrées)', 'stats-visites' ), number_format_i18n( $total_sessions ) ); ?>"
+                                       onclick="return confirm('<?php esc_attr_e( 'Êtes-vous sûr de vouloir vider la table des sessions ?', 'stats-visites' ); ?>');">
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
