@@ -3,8 +3,8 @@ Contributors: GUILLIER Alban
 Tags: statistiques, visites, articles, admin
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 1.0.0
-Requires PHP: 7.4
+Stable tag: 1.1.0
+Requires PHP: 7.4 or later
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,6 +34,11 @@ Le plugin exclut automatiquement :
 * Filtres par période
 * Pagination 50 articles par page
 * Interface CSS pour le BackOffice
+= 1.1.0 =
+* Ajout du filtre des bots
+* Ajout du filtre "Aujourd’hui"
+* Bouton de réinitialisation des tables
+* Bouton de réinitialisation des visiteurs actifs
 
 == Frequently Asked Questions ==
 = L'admin est-il comptabilisé ? =
