@@ -20,7 +20,7 @@ class Stats_Tracker {
 
         // autres bots fréquents
         'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot', 'perplexitybot', 'openai', 'chatgpt', 'gptbot', 'chatgpt-user',
-        'amazonbot', 'petalbot'
+        'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot'
 
     ];
 
