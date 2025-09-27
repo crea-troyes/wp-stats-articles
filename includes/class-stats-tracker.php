@@ -12,9 +12,9 @@ class Stats_Tracker {
         'blekkobot', 'sitebot', 'crawler', 'spider', 'robot', 'surveybot', 'heritrix', 'dataprovider', 'linkdexbot',
     
         // scrapers et outils divers
-        'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client',
-        'okhttp', 'httpx', 'axios', 'fetch', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler',
-    
+        'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client', 'okhttp',
+        'httpx', 'axios', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler',
+
         // réseaux sociaux
         'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot', 'line-pizza', 'whatsapp', 'tumblr', 'redditbot',
     
@@ -75,7 +75,7 @@ class Stats_Tracker {
             return;
         }
 
-        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : 'googlebot';
         if ( self::is_bot( $ua ) ) return;
 
         $post_id = get_queried_object_id();
