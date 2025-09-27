@@ -39,6 +39,11 @@ Le plugin exclut automatiquement :
 * Ajout du filtre "Aujourd’hui"
 * Bouton de réinitialisation des tables
 * Bouton de réinitialisation des visiteurs actifs
+= 1.3.0 =
+* Correction du bug pour Firefox
+* Optimisation de l'enregistrement des vues
+* Mise à jour des bots
+* Optimisation CSS du bouton de filtre
 
 == Frequently Asked Questions ==
 = L'admin est-il comptabilisé ? =
