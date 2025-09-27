@@ -54,7 +54,8 @@ Le plugin exclut automatiquement :
 ### 1.2.0
 - Correction du bug pour Firefox
 - Optimisation de l'enregistrement des vues
-- Mise à jour des bots  
+- Mise à jour des bots
+- Optimisation CSS du bouton de filtre
 
 ---
 
