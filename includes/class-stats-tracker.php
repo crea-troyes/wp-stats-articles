@@ -5,7 +5,7 @@ class Stats_Tracker {
     protected static $bot_patterns = [
         'googlebot', 'bingbot', 'slurp', 'yahoo', 'yandex', 'duckduckbot', 
         'baiduspider', 'sogou', 'exabot', 'facebot', 'facebookexternalhit', 
-        'mediapartners-google', 'bingpreview', 'seznambot', 'qwantify', 'nutch', 'archive.org_bot', 'yeti', 'ahoy',
+        'mediapartners-google', 'bingpreview', 'seznambot', 'qwantify', 'qwantbot', 'nutch', 'archive.org_bot', 'yeti', 'ahoy',
     
         // bots SEO et analyse
         'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'majestic12', 'rogerbot', 
