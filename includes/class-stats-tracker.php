@@ -3,25 +3,27 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Stats_Tracker {
     protected static $bot_patterns = [
+        // moteurs de recherche classiques
         'googlebot', 'bingbot', 'slurp', 'yahoo', 'yandex', 'duckduckbot', 
         'baiduspider', 'sogou', 'exabot', 'facebot', 'facebookexternalhit', 
         'mediapartners-google', 'bingpreview', 'seznambot', 'qwantify', 'qwantbot', 'nutch', 'archive.org_bot', 'yeti', 'ahoy',
-    
+
         // bots SEO et analyse
         'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'majestic12', 'rogerbot', 
         'blekkobot', 'sitebot', 'crawler', 'spider', 'robot', 'surveybot', 'heritrix', 'dataprovider', 'linkdexbot',
-    
+
         // scrapers et outils divers
         'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client', 'okhttp',
-        'httpx', 'axios', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler',
+        'httpx', 'axios', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler', 'wordpress', 'freshrss', 'feedparser',
+        'firefox/42.0', '@',
 
         // réseaux sociaux
         'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot', 'line-pizza', 'whatsapp', 'tumblr', 'redditbot',
-    
+
         // assistants IA et chatbots
         'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot', 'perplexitybot', 'openai', 'chatgpt', 'gptbot', 'chatgpt-user',
         'anthropic', 'bard', 'huggingface', 'bingpreview', 'youdao', 'deepmind', 'openai', 'stabilityai',
-    
+
         // autres bots fréquents
         'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot', 'yisou', 'wotbox', 'livelapbot', 'adsbot-google', 'linkedinbot',
         'semantabot', 'uptimerobot', 'pingdom', 'site24x7', 'uptimerobot', 'monitoring', 'statuscake', 'downtimebot', 'ccleaner'
@@ -45,7 +47,8 @@ class Stats_Tracker {
         $ip = self::get_remote_addr();
         if ( ! $ip ) return '';
         // hash to avoid storing raw IP
-        return hash( 'sha256', $ip );
+        // return hash( 'sha256', $ip );
+        return $ip;
     }
 
     protected static function get_remote_addr() {
@@ -98,7 +101,6 @@ class Stats_Tracker {
             [ '%d', '%s', '%s', '%s' ]
         );
 
-        // increment totals (INSERT ... ON DUPLICATE KEY UPDATE)
         $table_tot = $prefix . 'stats_post_totals';
         $wpdb->query(
             $wpdb->prepare(
@@ -107,6 +109,7 @@ class Stats_Tracker {
                 $post_id
             )
         );
+   
     }
 
     public static function maybe_update_session() {
