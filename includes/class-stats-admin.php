@@ -31,22 +31,20 @@ class Stats_Admin {
     }
 
     private function is_post_article($url) {
-    // Reconstituer l'URL complète
-    $full_url = home_url($url);
+        // Reconstituer l'URL complète
+        $full_url = home_url($url);
 
-    // Récupérer l'ID WordPress de la ressource
-    $post_id = url_to_postid($full_url);
+        // Récupérer l'ID WordPress de la ressource
+        $post_id = url_to_postid($full_url);
 
-    if ($post_id) {
-        // Vérifier que c'est bien un article
-        $post_type = get_post_type($post_id);
-        return $post_type === 'post';
+        if ($post_id) {
+            // Vérifier que c'est bien un article
+            $post_type = get_post_type($post_id);
+            return $post_type === 'post';
+        }
+
+        return false;
     }
-
-    
-
-    return false;
-}
 
     private static function parseUserAgent($ua) {
         $browser = 'Inconnu';
@@ -154,9 +152,14 @@ class Stats_Admin {
         foreach ( $active_rows as $r ) {
             $post_id = $r->post_id;
             if ( ! $post_id ) {
-                $post_id = url_to_postid( home_url( $r->page ) );
+                // Check for specific API URL pattern from other plugins
+                if ( preg_match( '#/wp-json/wordpress-popular-posts/v2/views/(\d+)#', $r->page, $matches ) ) {
+                    $post_id = (int) $matches[1];
+                } else {
+                    $post_id = url_to_postid( home_url( $r->page ) );
+                }
             }
-            if ( $post_id && get_post_type( $post_id ) === 'post' ) {
+            if ( $post_id && get_post_type( $post_id ) == 'post' ) {
                 $active_visitors++;
             }
         }
@@ -219,7 +222,7 @@ class Stats_Admin {
         // render (minimal)
         ?>
         <div class="wrap stats-visites-wrap">
-            <h1><?php esc_html_e( 'Statistiques', 'stats-visites' ); ?></h1>
+            <h1><?php esc_html_e( 'Statistiques des articles', 'stats-visites' ); ?></h1>
 
             <?php if ( isset( $_GET['stats_message'] ) && $_GET['stats_message'] === 'reset_success' ): ?>
                 <div class="notice notice-success is-dismissible">
@@ -239,13 +242,13 @@ class Stats_Admin {
                 </div>
 
                 <div class="stat-card">
-                    <h2><?php echo (intval( $active_count ) - $active_visitors); ?></h2>
-                    <p><?php esc_html_e( 'Bots actifs (5 min)', 'stats-visites' ); ?></p>
+                    <h2><?php echo intval( $active_count ); ?></h2>
+                    <p><?php esc_html_e( 'Visiteurs actifs (5 min)', 'stats-visites' ); ?></p>
                 </div>
 
                 <div class="stat-card">
                     <h2><?php echo $active_visitors; ?></h2>
-                    <p><?php esc_html_e( 'Visiteurs actifs (5 min)', 'stats-visites' ); ?></p>
+                    <p><?php esc_html_e( 'Actifs sur un article (5 min)', 'stats-visites' ); ?></p>
                 </div>
 
                 <div class="stat-card">
@@ -263,7 +266,7 @@ class Stats_Admin {
             </div>
 
             <div class="active-list">
-                <h2><?php esc_html_e( 'Visiteurs actifs', 'stats-visites' ); ?></h2>
+                <h2><?php esc_html_e( 'Actifs sur les articles', 'stats-visites' ); ?></h2>
                 <table class="widefat">
                     <thead><tr><th><?php esc_html_e( 'Page', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Post_ID', 'stats-visites' ); ?></th><th><?php esc_html_e( 'Dernière_activité', 'stats-visites' ); ?></th><th><?php esc_html_e( 'IP', 'stats-visites' ); ?></th><th><?php esc_html_e( 'User Agent', 'stats-visites' ); ?></th></tr></thead>
                     <tbody>
