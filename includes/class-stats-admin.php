@@ -276,7 +276,9 @@ class Stats_Admin {
                                 $post_id = $r->post_id;
 
                                 // Si l'ID est vide, on tente de le déduire de l'URL
-                                if ( ! $post_id ) {
+                                if ( preg_match( '#/wp-json/wordpress-popular-posts/v2/views/(\d+)#', $r->page, $matches ) ) {
+                                    $post_id = (int) $matches[1];
+                                } else {
                                     $post_id = url_to_postid( home_url( $r->page ) );
                                 }
 
