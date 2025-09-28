@@ -3,7 +3,7 @@ Contributors: GUILLIER Alban
 Tags: statistiques, visites, articles, admin
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 1.2.5
+Stable tag: 1.3.0
 Requires PHP: 7.4 or later
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -47,6 +47,9 @@ Le plugin exclut automatiquement :
 = 1.2.5 =
 * Refonte des titres
 * Optimisation de l'enregistrement des vues
+= 1.3.0 =
+* Refonte du tracker
+* Mise à jour des bots
 
 == Frequently Asked Questions ==
 = L'admin est-il comptabilisé ? =
