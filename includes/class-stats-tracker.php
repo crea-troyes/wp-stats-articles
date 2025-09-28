@@ -22,7 +22,7 @@ class Stats_Tracker {
 
         // assistants IA et chatbots
         'discordbot', 'applebot', 'embedly', 'quora link preview', 'ahoy', 'msnbot', 'perplexitybot', 'openai', 'chatgpt', 'gptbot', 'chatgpt-user',
-        'anthropic', 'bard', 'huggingface', 'bingpreview', 'youdao', 'deepmind', 'openai', 'stabilityai',
+        'anthropic', 'bard', 'huggingface', 'bingpreview', 'youdao', 'deepmind', 'openai', 'stabilityai', 'perplexity',
 
         // autres bots fréquents
         'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot', 'yisou', 'wotbox', 'livelapbot', 'adsbot-google', 'linkedinbot',
@@ -30,8 +30,7 @@ class Stats_Tracker {
     ];
 
     public static function init() {
-        add_action( 'template_redirect', [ __CLASS__, 'maybe_track' ], 0 );
-        add_action( 'init', [ __CLASS__, 'maybe_update_session' ], 0 );
+        add_action( 'template_redirect', [ __CLASS__, 'track_and_update_session' ], 10 );
     }
 
     protected static function is_bot( $ua ) {
@@ -65,21 +64,22 @@ class Stats_Tracker {
         return '';
     }
 
-    public static function maybe_track() {
+    public static function track_and_update_session() {
         if ( is_admin() ) return;
-        // Only track single posts (articles)
-        if ( ! is_singular( 'post' ) ) {
-            // still update session for active visitors on non-post pages
-            return;
-        }
 
         // Exclude admin users
         if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
             return;
         }
 
-        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : 'googlebot';
+        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
         if ( self::is_bot( $ua ) ) return;
+
+        // First, update the session for any page view
+        self::update_session( $ua );
+
+        // Then, if it's a single post, track the view
+        if ( ! is_singular( 'post' ) ) return;
 
         $post_id = get_queried_object_id();
         if ( ! $post_id ) return;
@@ -109,21 +109,9 @@ class Stats_Tracker {
                 $post_id
             )
         );
-   
     }
 
-    public static function maybe_update_session() {
-        // Update sessions for active visitors for any front-end request (not admin)
-        if ( is_admin() ) return;
-
-        // Exclude admin users
-        if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
-            return;
-        }
-
-        $ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
-        if ( self::is_bot( $ua ) ) return;
-
+    protected static function update_session( $ua ) {
         global $wpdb;
         $prefix = $wpdb->prefix;
         $ip_hash = self::ip_hash();
