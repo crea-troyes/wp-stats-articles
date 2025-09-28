@@ -24,7 +24,7 @@ class Stats_Tracker {
     
         // autres bots fréquents
         'amazonbot', 'petalbot', 'yak/1.0', 'google-safety', 'trendictionbot', 'yisou', 'wotbox', 'livelapbot', 'adsbot-google', 'linkedinbot',
-        'semantabot', 'uptimerobot', 'pingdom', 'site24x7', 'uptimerobot', 'monitoring', 'statuscake', 'downtimebot'
+        'semantabot', 'uptimerobot', 'pingdom', 'site24x7', 'uptimerobot', 'monitoring', 'statuscake', 'downtimebot', 'ccleaner'
     ];
 
     public static function init() {
