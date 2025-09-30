@@ -15,7 +15,7 @@ class Stats_Tracker {
         // scrapers et outils divers
         'curl', 'wget', 'python-requests', 'httpclient', 'libwww-perl', 'java', 'node-fetch', 'ruby', 'php', 'perl', 'scrapy', 'go-http-client', 'okhttp',
         'httpx', 'axios', 'urllib', 'python-urllib', 'httpie', 'winhttp', 'httrack', 'masscan', 'fiddler', 'wordpress', 'freshrss', 'feedparser',
-        'firefox/42.0', '@', 'WP.com',
+        'firefox/42.0', '@', 'WP.com', 'Mattermost', 'Bot',
 
         // réseaux sociaux
         'twitterbot', 'linkedinbot', 'pinterest', 'slackbot', 'telegrambot', 'line-pizza', 'whatsapp', 'tumblr', 'redditbot',
